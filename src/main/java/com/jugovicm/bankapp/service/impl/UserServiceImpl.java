@@ -2,6 +2,7 @@ package com.jugovicm.bankapp.service.impl;
 
 import com.jugovicm.bankapp.dto.AccountInfo;
 import com.jugovicm.bankapp.dto.BankResponse;
+import com.jugovicm.bankapp.dto.EmailDetails;
 import com.jugovicm.bankapp.dto.UserRequest;
 import com.jugovicm.bankapp.entity.User;
 import com.jugovicm.bankapp.repository.UserRepository;
@@ -16,6 +17,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    EmailService emailService;
 
     @Override
     public BankResponse createAccount(UserRequest userRequest) {
@@ -44,6 +48,17 @@ public class UserServiceImpl implements UserService {
                 .build ();
 
         User savedUser = userRepository.save ( newUser );
+
+        EmailDetails emailDetails = EmailDetails.builder ()
+                .recipient ( savedUser.getEmail () )
+                .messageBody ("Congratulations! Your account has been successfully created! \nYour account details:\n" +
+                "Account Name: " + savedUser.getFirstName () + " " + savedUser.getLastName () + " " + savedUser.getOtherName () + "\n" +
+                        "Account number: " + savedUser.getAccountNumber ())
+                .subject ( "ACCOUNT CREATION" )
+                .build ();
+
+        emailService.sendEmailAlert (emailDetails);
+
         return BankResponse.builder ()
                 .responseCode ( AccountsUtils.ACCOUNT_CREATION_SUCCESS )
                 .responseMessage ( AccountsUtils.ACCOUNT_CREATION_MESSAGE )
