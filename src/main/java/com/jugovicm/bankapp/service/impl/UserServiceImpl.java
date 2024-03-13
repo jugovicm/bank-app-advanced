@@ -1,9 +1,6 @@
 package com.jugovicm.bankapp.service.impl;
 
-import com.jugovicm.bankapp.dto.AccountInfo;
-import com.jugovicm.bankapp.dto.BankResponse;
-import com.jugovicm.bankapp.dto.EmailDetails;
-import com.jugovicm.bankapp.dto.UserRequest;
+import com.jugovicm.bankapp.dto.*;
 import com.jugovicm.bankapp.entity.User;
 import com.jugovicm.bankapp.repository.UserRepository;
 import com.jugovicm.bankapp.utils.AccountsUtils;
@@ -68,5 +65,41 @@ public class UserServiceImpl implements UserService {
                         .accountName ( savedUser.getFirstName () + " " + savedUser.getLastName () + " " + savedUser.getOtherName () )
                         .build ())
                 .build ();
+    }
+
+    // balance Enquiry, name Enquiry, credit, debit, transfer
+
+
+    @Override
+    public BankResponse balanceEnquiry(EnquiryRequest enquiryRequest) {
+        // check if the provided account number exists in the db
+        boolean isAccountExist = userRepository.existsByAccountNumber ( enquiryRequest.getAccountNumber ());
+        if(!isAccountExist){
+            return BankResponse.builder ()
+                    .responseCode ( AccountsUtils.ACCOUNT_NOT_EXIST_CODE )
+                    .responseMessage ( AccountsUtils.ACCOUNT_NOT_EXIST_MESSAGE )
+                    .accountInfo ( null )
+                    .build ();
+        }
+        User foundUser = userRepository.findByAccountNumber ( enquiryRequest.getAccountNumber () );
+        return BankResponse.builder ()
+                .responseCode ( AccountsUtils.ACCOUNT_FOUND_CODE )
+                .responseMessage ( AccountsUtils.ACCOUNT_FOUND_MESSAGE )
+                .accountInfo ( AccountInfo.builder ()
+                            .accountBalance ( foundUser.getAccountBalance () )
+                            .accountNumber ( enquiryRequest.getAccountNumber () )
+                            .accountName ( foundUser.getFirstName ()+" "+ foundUser.getLastName ()+" "+ foundUser.getOtherName ())
+                            .build())
+                .build ();
+    }
+
+    @Override
+    public String nameEnquiry(EnquiryRequest enquiryRequest) {
+        boolean isAccountExist = userRepository.existsByAccountNumber ( enquiryRequest.getAccountNumber ());
+        if(!isAccountExist){
+            return AccountsUtils.ACCOUNT_NOT_EXIST_MESSAGE;
+        }
+        User foundUser = userRepository.findByAccountNumber ( enquiryRequest.getAccountNumber () );
+        return foundUser.getFirstName ()+" "+ foundUser.getLastName ()+" "+ foundUser.getOtherName ();
     }
 }
