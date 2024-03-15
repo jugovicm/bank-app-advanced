@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -101,5 +102,69 @@ public class UserServiceImpl implements UserService {
         }
         User foundUser = userRepository.findByAccountNumber ( enquiryRequest.getAccountNumber () );
         return foundUser.getFirstName ()+" "+ foundUser.getLastName ()+" "+ foundUser.getOtherName ();
+    }
+
+    @Override
+    public BankResponse creditAccount(CreditDebitRequest creditDebitRequest) {
+        // check if account exists
+        boolean isAccountExist = userRepository.existsByAccountNumber ( creditDebitRequest.getAccountNumber ());
+        if(!isAccountExist){
+            return BankResponse.builder ()
+                    .responseCode ( AccountsUtils.ACCOUNT_NOT_EXIST_CODE )
+                    .responseMessage ( AccountsUtils.ACCOUNT_NOT_EXIST_MESSAGE )
+                    .accountInfo ( null )
+                    .build ();
+        }
+        User userToCredit = userRepository.findByAccountNumber ( creditDebitRequest.getAccountNumber () );
+        userToCredit.setAccountBalance ( userToCredit.getAccountBalance ().add ( creditDebitRequest.getAmount () ) );
+        userRepository.save ( userToCredit );
+        return BankResponse.builder ()
+                .responseCode ( AccountsUtils.ACCOUNT_CREDITED_SUCCESS_CODE )
+                .responseMessage (  AccountsUtils.ACCOUNT_CREDITED_SUCCESS_MESSAGE)
+                .accountInfo ( AccountInfo.builder ()
+                        .accountBalance ( userToCredit.getAccountBalance () )
+                        .accountNumber ( userToCredit.getAccountNumber () )
+                        .accountName ( userToCredit.getFirstName () + " " + userToCredit.getOtherName () + " " + userToCredit.getLastName ())
+                        .build () )
+                .build ();
+    }
+
+    @Override
+    public BankResponse debitAccount(CreditDebitRequest creditDebitRequest) {
+        // check if account exists
+        boolean isAccountExist = userRepository.existsByAccountNumber ( creditDebitRequest.getAccountNumber ());
+        if(!isAccountExist){
+            return BankResponse.builder ()
+                    .responseCode ( AccountsUtils.ACCOUNT_NOT_EXIST_CODE )
+                    .responseMessage ( AccountsUtils.ACCOUNT_NOT_EXIST_MESSAGE )
+                    .accountInfo ( null )
+                    .build ();
+        }
+        User userToDebit = userRepository.findByAccountNumber ( creditDebitRequest.getAccountNumber () );
+        // check if the amount intend to withdraw is not more than the current balance
+        BigInteger availableBalance = userToDebit.getAccountBalance ().toBigInteger ();
+        BigInteger debitAmount = creditDebitRequest.getAmount ().toBigInteger ();
+        if(availableBalance.intValue () < debitAmount.intValue ()){
+            return BankResponse.builder ()
+                    .responseCode ( AccountsUtils.INSUFFICIENT_BALANCE_CODE )
+                    .responseMessage (  AccountsUtils.INSUFFICIENT_BALANCE_MESSAGE)
+                    .accountInfo (null)
+                    .build ();
+        }
+        else{
+            userToDebit.setAccountBalance ( userToDebit.getAccountBalance ().subtract ( creditDebitRequest.getAmount () ) );
+            userRepository.save ( userToDebit);
+            return BankResponse.builder ()
+                    .responseCode ( AccountsUtils.ACCOUNT_DEBITED_SUCCESS_CODE )
+                    .responseMessage (  AccountsUtils.ACCOUNT_DEBITED_SUCCESS_MESSAGE)
+                    .accountInfo ( AccountInfo.builder ()
+                            .accountBalance ( userToDebit.getAccountBalance () )
+                            .accountNumber ( userToDebit.getAccountNumber () )
+                            .accountName ( userToDebit.getFirstName () + " " + userToDebit.getOtherName () + " " + userToDebit.getLastName ())
+                            .build () )
+                    .build ();
+        }
+
+
     }
 }
