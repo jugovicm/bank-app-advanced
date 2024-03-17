@@ -164,7 +164,64 @@ public class UserServiceImpl implements UserService {
                             .build () )
                     .build ();
         }
+    }
+
+    @Override
+    public BankResponse transfer(TransferRequest transferRequest) {
+        // get the account to debit, check if it exists
+        // check if the amount I am debiting is nor more than the current balance
+        // debit the account
+        // get the account to credit
+        // credit the account
 
 
+        boolean isDestinationAccountExist = userRepository.existsByAccountNumber ( transferRequest.getDestinationAccountNumber ());
+        if(!isDestinationAccountExist){
+            return BankResponse.builder ()
+                    .responseCode ( AccountsUtils.ACCOUNT_NOT_EXIST_CODE )
+                    .responseMessage ( AccountsUtils.ACCOUNT_NOT_EXIST_MESSAGE )
+                    .accountInfo ( null )
+                    .build ();
+        }
+
+        User sourceAccountUser = userRepository.findByAccountNumber ( transferRequest.getSourceAccountNumber () );
+        if(transferRequest.getAmount ().compareTo ( sourceAccountUser.getAccountBalance () )>00){
+            return BankResponse.builder ()
+                    .responseCode (AccountsUtils.INSUFFICIENT_BALANCE_CODE)
+                    .responseMessage (AccountsUtils.INSUFFICIENT_BALANCE_MESSAGE)
+                    .accountInfo (null)
+                    .build ();
+        }
+
+        sourceAccountUser.setAccountBalance ( sourceAccountUser.getAccountBalance ().subtract ( transferRequest.getAmount ()  ));
+        userRepository.save ( sourceAccountUser );
+        // email alert
+        EmailDetails debitAlert = EmailDetails.builder ()
+                .subject ( "DEBIT ALERT" )
+                .recipient ( sourceAccountUser.getEmail () )
+                .messageBody ( "The sum of " + transferRequest.getAmount ()+" has been debited from your account. Your current balance is " + sourceAccountUser.getAccountBalance ()  )
+                .build ();
+
+        emailService.sendEmailAlert ( debitAlert );
+
+
+        User destinationAccountUser = userRepository.findByAccountNumber ( transferRequest.getDestinationAccountNumber () );
+        destinationAccountUser.setAccountBalance ( destinationAccountUser.getAccountBalance ().add ( transferRequest.getAmount () ) );
+        userRepository.save ( destinationAccountUser );
+
+        // email alert
+        EmailDetails creditAlert = EmailDetails.builder ()
+                .subject ( "CREDIT ALERT" )
+                .recipient ( destinationAccountUser.getEmail () )
+                .messageBody ( "The sum of " + transferRequest.getAmount ()+" has been credited from your account. Your current balance is " + destinationAccountUser.getAccountBalance ()  )
+                .build ();
+
+        emailService.sendEmailAlert ( debitAlert );
+
+        return BankResponse.builder ()
+                .responseCode (AccountsUtils.TRANSFER_SUCCESSFUL_CODE)
+                .responseMessage (AccountsUtils.TRANSFER_SUCCESSFUL_MESSAGE)
+                .accountInfo (null)
+                .build ();
     }
 }

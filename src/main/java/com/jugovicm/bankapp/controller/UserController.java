@@ -1,9 +1,6 @@
 package com.jugovicm.bankapp.controller;
 
-import com.jugovicm.bankapp.dto.BankResponse;
-import com.jugovicm.bankapp.dto.CreditDebitRequest;
-import com.jugovicm.bankapp.dto.EnquiryRequest;
-import com.jugovicm.bankapp.dto.UserRequest;
+import com.jugovicm.bankapp.dto.*;
 import com.jugovicm.bankapp.service.impl.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -37,5 +34,10 @@ public class UserController {
     @PostMapping("debit")
     public BankResponse debitAccount(@RequestBody CreditDebitRequest creditDebitRequest){
         return userService.debitAccount ( creditDebitRequest );
+    }
+
+    @PostMapping("transfer")
+    public BankResponse transfer(@RequestBody TransferRequest transferRequest ){
+        return userService.transfer (transferRequest);
     }
 }
