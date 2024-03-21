@@ -17,6 +17,9 @@ public class UserServiceImpl implements UserService {
     UserRepository userRepository;
 
     @Autowired
+    TransactionService transactionService;
+
+    @Autowired
     EmailService emailService;
 
     @Override
@@ -115,9 +118,21 @@ public class UserServiceImpl implements UserService {
                     .accountInfo ( null )
                     .build ();
         }
+
         User userToCredit = userRepository.findByAccountNumber ( creditDebitRequest.getAccountNumber () );
         userToCredit.setAccountBalance ( userToCredit.getAccountBalance ().add ( creditDebitRequest.getAmount () ) );
         userRepository.save ( userToCredit );
+
+        // Save transaction
+        TransactionDto transactionDto = TransactionDto.builder ()
+                .accountNumber ( userToCredit.getAccountNumber ())
+                .amount ( creditDebitRequest.getAmount () )
+                .transactionType ( "CREDIT" )
+                .status ( "SUCCESS" )
+                .build ();
+
+        transactionService.saveTransaction ( transactionDto );
+
         return BankResponse.builder ()
                 .responseCode ( AccountsUtils.ACCOUNT_CREDITED_SUCCESS_CODE )
                 .responseMessage (  AccountsUtils.ACCOUNT_CREDITED_SUCCESS_MESSAGE)
@@ -141,6 +156,7 @@ public class UserServiceImpl implements UserService {
                     .build ();
         }
         User userToDebit = userRepository.findByAccountNumber ( creditDebitRequest.getAccountNumber () );
+
         // check if the amount intend to withdraw is not more than the current balance
         BigInteger availableBalance = userToDebit.getAccountBalance ().toBigInteger ();
         BigInteger debitAmount = creditDebitRequest.getAmount ().toBigInteger ();
@@ -154,6 +170,16 @@ public class UserServiceImpl implements UserService {
         else{
             userToDebit.setAccountBalance ( userToDebit.getAccountBalance ().subtract ( creditDebitRequest.getAmount () ) );
             userRepository.save ( userToDebit);
+            // Save transaction
+            TransactionDto transactionDto = TransactionDto.builder ()
+                    .accountNumber ( userToDebit.getAccountNumber ())
+                    .amount ( creditDebitRequest.getAmount () )
+                    .transactionType ( "DEBIT" )
+                    .status ( "SUCCESS" )
+                    .build ();
+
+            transactionService.saveTransaction ( transactionDto );
+
             return BankResponse.builder ()
                     .responseCode ( AccountsUtils.ACCOUNT_DEBITED_SUCCESS_CODE )
                     .responseMessage (  AccountsUtils.ACCOUNT_DEBITED_SUCCESS_MESSAGE)
@@ -208,7 +234,15 @@ public class UserServiceImpl implements UserService {
         User destinationAccountUser = userRepository.findByAccountNumber ( transferRequest.getDestinationAccountNumber () );
         destinationAccountUser.setAccountBalance ( destinationAccountUser.getAccountBalance ().add ( transferRequest.getAmount () ) );
         userRepository.save ( destinationAccountUser );
+        // Save transaction
+        TransactionDto transactionDto = TransactionDto.builder ()
+                .accountNumber ( sourceAccountUser.getAccountNumber ())
+                .amount ( transferRequest.getAmount () )
+                .transactionType ( "DEBIT" )
+                .status ( "SUCCESS" )
+                .build ();
 
+        transactionService.saveTransaction ( transactionDto );
         // email alert
         EmailDetails creditAlert = EmailDetails.builder ()
                 .subject ( "CREDIT ALERT" )
@@ -217,7 +251,15 @@ public class UserServiceImpl implements UserService {
                 .build ();
 
         emailService.sendEmailAlert ( debitAlert );
+        // Save transaction
+        transactionDto = TransactionDto.builder ()
+                .accountNumber ( destinationAccountUser.getAccountNumber ())
+                .amount ( transferRequest.getAmount () )
+                .transactionType ( "CREDIT" )
+                .status ( "SUCCESS" )
+                .build ();
 
+        transactionService.saveTransaction ( transactionDto );
         return BankResponse.builder ()
                 .responseCode (AccountsUtils.TRANSFER_SUCCESSFUL_CODE)
                 .responseMessage (AccountsUtils.TRANSFER_SUCCESSFUL_MESSAGE)
