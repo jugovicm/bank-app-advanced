@@ -23,7 +23,7 @@ public class TransactionController {
     public List<Transaction> generateBankStatement(@RequestParam String accountNumber,
                                                    @RequestParam String startDate,
                                                    @RequestParam String endDate) throws FileNotFoundException, DocumentException {
-        return bankStatement.generateStatements (accountNumber, startDate, endDate);
+        return bankStatement.generateStatement (accountNumber, startDate, endDate);
     }
 
 }
